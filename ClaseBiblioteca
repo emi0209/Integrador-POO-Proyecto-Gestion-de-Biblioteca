@@ -1,0 +1,181 @@
+import java.util.ArrayList;
+import java.util.Calendar;
+
+public class Biblioteca{
+    private String nombre;
+    private ArrayList<Libro> libros;
+    private ArrayList<Socio> socios;
+
+    // Constructor principal de la biblioteca
+    public Biblioteca(String p_nombre) {
+        this.nombre = p_nombre;
+        this.libros = new ArrayList<Libro>();
+        this.socios = new ArrayList<Socio>();
+    }
+
+    // 1. REGISTRO Y ALTAS
+    public void nuevoLibro(String p_titulo, int p_edicion, String p_editorial, int p_anio) {
+        Libro unLibro = new Libro(p_titulo, p_edicion, p_editorial, p_anio);
+        this.libros.add(unLibro);
+    }
+
+    public void nuevoSocioEstudiante(int p_dniSocio, String p_nombre, String p_carrera) {
+        Estudiante unEstudiante = new Estudiante(p_dniSocio, p_nombre, 20, p_carrera); 
+        this.socios.add(unEstudiante);
+    }
+
+    public void nuevoSocioDocente(int p_dniSocio, String p_nombre, String p_area) {
+        Docente unDocente = new Docente(p_dniSocio, p_nombre, 5, p_area);
+        this.socios.add(unDocente);
+    }
+
+    // 2. BUSQUEDAS Y CONSULTAS CLAVE
+    public Socio buscarSocio(int p_dni) {
+        Socio socioEncontrado = null;
+        for (Socio s : this.socios) {
+            if (s.getDniSocio() == p_dni) {
+                socioEncontrado = s;
+                break;
+            }
+        }
+        return socioEncontrado;
+    }
+
+    // 3. PRESTAMOS Y DEVOLUCIONES
+    public boolean prestarLibro(Calendar p_fechaRetiro, Socio p_socio, Libro p_libro) {
+        boolean sePudoPrestar = false;
+        
+        if (p_socio.puedePedir() && !p_libro.prestado()) {
+            Prestamo unPrestamo = new Prestamo(p_fechaRetiro, p_libro, p_socio);
+            // Aca se asienta el prestamo en el libro y en el socio segun corresponda
+            sePudoPrestar = true;
+        }
+        
+        return sePudoPrestar;
+    }
+
+    public void devolverLibro(Libro p_libro) throws LibroNoPrestadoException {
+        if (!p_libro.prestado()) {
+            throw new LibroNoPrestadoException("El libro " + p_libro.getTitulo() + " no se puede devolver ya que se encuentra en la biblioteca");
+        }
+        
+        Prestamo ultimo = p_libro.ultimoPrestamo();
+        if (ultimo != null) {
+            ultimo.registrarFechaDevolucion(Calendar.getInstance());
+        }
+    }
+   
+    // 4. INFORMES Y LISTADOS
+    public int cantidadDeSociosPorTipo(String p_tipo) {
+        int contador = 0;
+        for (Socio s : this.socios) {
+            if (s.soyDeLaClase().equalsIgnoreCase(p_tipo)) {
+                contador++;
+            }
+        }
+        return contador;
+    }
+    
+    // Devuelve una coleccion con los prestamos vencidos al dia de la fecha
+    public ArrayList<Prestamo> prestamosVencidos() {
+        ArrayList<Prestamo> vencidos = new ArrayList<Prestamo>();
+        for (Libro l : this.libros) {
+            Prestamo ultimo = l.ultimoPrestamo();
+            if (ultimo != null && ultimo.vencido(Calendar.getInstance())) {
+                vencidos.add(ultimo);
+            }
+        }
+        return vencidos;
+    }
+
+    // Devuelve una coleccion con los docentes responsables
+    public ArrayList<Docente> docentesResponsables() {
+        ArrayList<Docente> responsables = new ArrayList<Docente>();
+        for (Socio s : this.socios) {
+            if (s instanceof Docente) {
+                Docente unDocente = (Docente) s;
+                if (unDocente.esResponsable()) {
+                    responsables.add(unDocente);
+                }
+            }
+        }
+        return responsables;
+    }
+
+    // Devuelve el nombre del Socio que tiene el libro ingresado
+    public String quienTieneElLibro(Libro p_libro) throws LibroNoPrestadoException {
+        if (!p_libro.prestado()) {
+            throw new LibroNoPrestadoException("El libro se encuentra en la biblioteca");
+        }
+        
+        Prestamo ultimo = p_libro.ultimoPrestamo();
+        String nombreSocio = "";
+        if (ultimo != null) {
+            // Asume que Prestamo tiene un metodo para retornar el socio o su nombre
+            // nombreSocio = ultimo.getSocio().getNombre();
+        }
+        return nombreSocio;
+    }
+    
+    public String listaDeSocios() {
+        String listado = "Lista de Socios:\n";
+        int i = 1;
+        for (Socio s : this.socios) {
+            listado += i + ") " + s.toString() + " || Libros Prestados: " + s.cantLibrosPrestados() + "\n";
+            i++;
+        }
+        listado += "**************************************\n";
+        listado += "Cantidad de Socios del tipo Estudiante: " + this.cantidadDeSociosPorTipo("Estudiante") + "\n";
+        listado += "Cantidad de Socios del tipo Docente: " + this.cantidadDeSociosPorTipo("Docente") + "\n";
+        listado += "**************************************";
+        return listado;
+    }
+
+    // Devuelve la lista de libros 
+    public String listaDeLibros() {
+        String listado = "Lista de Libros:\n";
+        int i = 1;
+        for (Libro l : this.libros) {
+            String estaPrestado;
+            if (l.prestado()) {
+                estaPrestado = "(Si)";
+            } else {
+                estaPrestado = "(No)";
+            }
+            
+            listado += i + ") " + l.toString() + " || Prestado: " + estaPrestado + "\n";
+            i++;
+        }
+        return listado;
+    }
+
+    // Devuelve la lista de titulos sin repetir
+    public String listaDeTitulos() {
+        String listado = "Lista de Titulos:\n";
+        ArrayList<String> titulosVistos = new ArrayList<String>();
+        
+        for (Libro l : this.libros) {
+            // Asume que Libro cuenta con un metodo getTitulo()
+            String tituloActual = l.getTitulo();
+            boolean encontrado = false;
+            
+            for (String t : titulosVistos) {
+                if (t.equalsIgnoreCase(tituloActual)) {
+                    encontrado = true;
+                    break;
+                }
+            }
+            
+            if (!encontrado) {
+                titulosVistos.add(tituloActual);
+                listado += "- " + tituloActual + "\n";
+            }
+        }
+        return listado;
+    }
+
+    // Getters basicos
+    public String getNombre() {
+        return nombre;
+    }
+}
